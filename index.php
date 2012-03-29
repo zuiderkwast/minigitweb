@@ -10,6 +10,14 @@
  * By Viktor 2011-05-04
  */
 
+// unregister globals
+if (ini_get('register_globals')) {
+  foreach ($GLOBALS as $k => $v) {
+    if ($k !== 'GLOBALS' && $k !== '_GET' && $k !== '_SERVER') unset($GLOBALS[$k]);
+  }
+}
+error_reporting(E_ALL | E_NOTICE);
+
 header("Content-Type: text/html; charset=UTF-8");
 
 // Find directory containing the .git directory
@@ -143,16 +151,22 @@ if (!$do) $do = 'status';
           . ' <label><input type="checkbox" class="check" name="commit[]" value="$1" /></label>',
           htmlspecialchars($log)
         );
-        //echo '<p><label>',
-        //     'HEAD <input type="checkbox" class="check" name="commit[]" value="HEAD" />',
-        //     "</label>\n";
-        echo '<div>',
-          '<a href="?do=diff&amp;commit[]=HEAD">HEAD</a>',
-          '<label><input type="checkbox" class="check" name="commit[]" value="HEAD" /></label>',
-          '</div>';
+        //echo '<div>',
+        //  '<a href="?do=diff&amp;commit[]=HEAD">HEAD</a>',
+        //  '<label><input type="checkbox" class="check" name="commit[]" value="HEAD" /></label>',
+        //  '</div>';
         echo "<pre>$log</pre>\n";
         echo "</form>\n";
         echo "</div>";
+        break;
+      }
+      case 'show': {
+        $commit = $_GET['commit'];
+        $cmd = "git show $commit";
+        echo "<h2>$cmd</h2>";
+        echo '<div class="content">';
+        // TODO
+        echo '</div>';
         break;
       }
       case 'branch': {
@@ -257,6 +271,10 @@ if (!$do) $do = 'status';
         elseif (isset($_GET['from'], $_GET['to'])) {
           $commits = array($_GET['to'], $_GET['from']);
         }
+        elseif (isset($_GET['commits'])) {
+          $commits = $_GET['commits'];
+        }
+        else $commits = null;
         switch (count($commits)) {
           case 0: {
             //echo "<p>No commits selected.</p>";
@@ -288,21 +306,20 @@ if (!$do) $do = 'status';
         $renderer->setCommitRange($from, $to);
         echo '<h2>', $renderer->getDiffCommand(), '</h2>';
         echo '<div class="content">';
-        if (isset($_GET['noblame'])) {
-          $renderer->useBlame(false);
+        if (isset($_GET['blame'])) {
+          echo '<p>Hover on line numbers for blame tooltip.</p>';
+          $renderer->useBlame(true);
         }
         else {
+          $renderer->useBlame(false);
           $param = $_GET;
           echo
-            '<p id="turnoffblame">Slow? <a href="?',
-            htmlspecialchars($_SERVER['QUERY_STRING'] . '&noblame'), '">Turn off blame</a>',
+            '<p><a href="?',
+            htmlspecialchars($_SERVER['QUERY_STRING'] . '&blame'), '">Show blame</a>',
             '</p>';
         }
         $renderer->renderDiff();
         echo '</div>';
-        echo '<script type="text/javascript">',
-          'document.getElementById("turnoffblame").style.display="none";',
-          '</script>';
         break;
       }
       case 'help': {
@@ -384,13 +401,15 @@ class GitDiffRenderer {
     echo '<tr class="', $class, '">';
     if (is_null($old)) echo '<td class="nums"></td>';
     else {
-      echo '<td class="nums" title="', htmlspecialchars($this->blameleft[$this->lineleft]) ,'">',
+      $title = isset($this->blameleft[$this->lineleft]) ? $this->blameleft[$this->lineleft] : '';
+      echo '<td class="nums" title="', htmlspecialchars($title) ,'">',
            $this->lineleft++, '</td>';
     }
     echo '<td>', $this->textToHtml($old), '</td>';
     if (is_null($new)) echo '<td class="nums"></td>';
     else {
-      echo '<td class="nums" title="', htmlspecialchars($this->blameright[$this->lineright]) ,'">',
+      $title = isset($this->blameright[$this->lineright]) ? $this->blameright[$this->lineright] : '';
+      echo '<td class="nums" title="', htmlspecialchars($title) ,'">',
            $this->lineright++, '</td>';
     }
     echo '<td>', $this->textToHtml($new), '</td>';
