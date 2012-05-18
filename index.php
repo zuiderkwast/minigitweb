@@ -37,8 +37,7 @@ while(true) {
 chdir($path);
 
 $repo = basename($path);
-$do = $_GET['do'];
-if (!$do) $do = 'status';
+$do = empty($_GET['do']) ? 'status' : $_GET['do'];
 
 ?>
 <!DOCTYPE html>
