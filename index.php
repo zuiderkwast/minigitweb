@@ -146,26 +146,13 @@ $do = empty($_GET['do']) ? 'status' : $_GET['do'];
         $log = `$cmd 2>&1`;
         $log = preg_replace(
           '/^commit (\S+)$/m',
-          "commit <a href=\"?do=diff&amp;commit[]=$1\">$1</a>"
+          "commit <a href=\"?do=show&amp;commit=$1\">$1</a>"
           . ' <label><input type="checkbox" class="check" name="commit[]" value="$1" /></label>',
           htmlspecialchars($log)
         );
-        //echo '<div>',
-        //  '<a href="?do=diff&amp;commit[]=HEAD">HEAD</a>',
-        //  '<label><input type="checkbox" class="check" name="commit[]" value="HEAD" /></label>',
-        //  '</div>';
         echo "<pre>$log</pre>\n";
         echo "</form>\n";
         echo "</div>";
-        break;
-      }
-      case 'show': {
-        $commit = $_GET['commit'];
-        $cmd = "git show $commit";
-        echo "<h2>$cmd</h2>";
-        echo '<div class="content">';
-        // TODO
-        echo '</div>';
         break;
       }
       case 'branch': {
@@ -256,13 +243,14 @@ $do = empty($_GET['do']) ? 'status' : $_GET['do'];
         $cherry = htmlspecialchars(`$cmd 2>&1`);
         $cherry = preg_replace(
           '/^(\+|-) (\S+)/m',
-          '$1 <a href="?do=diff&amp;commit[]=$2">$2</a>',
+          '$1 <a href="?do=show&amp;commit=$2">$2</a>',
           $cherry
         );
         echo "<pre>$cherry</pre>";
         echo '</div>';
         break;
       }
+      case 'show': // Fallthru: "diff" is "show" when called with exactly one commit.
       case 'diff': {
         if (isset($_GET['commit'])) {
           $commits = (array)$_GET['commit'];
@@ -276,19 +264,12 @@ $do = empty($_GET['do']) ? 'status' : $_GET['do'];
         else $commits = null;
         switch (count($commits)) {
           case 0: {
-            //echo "<p>No commits selected.</p>";
-            $from = 'HEAD';
-            $to = '';
+            $from = $to = null;
             break;
           }
           case 1: {
-            //array_unshift($commits, 'HEAD');
-            // fallthru
-            list ($to) = $commits;
-            if ($to == 'HEAD') {
-              $from = $to; $to = '';
-            }
-            else $from = "$to^";
+            $from = $commits[0];
+            $to = null;
             break;
           }
           case 2: {
@@ -435,26 +416,30 @@ class GitDiffRenderer {
   }
 
   public function getDiffCommand() {
-    $command = "git diff";
-    if ($this->from && $this->to) $command .= " {$this->from}..{$this->to}";
-    elseif ($this->from) $command .= " {$this->from}";
-    return $command;
+    if ($this->from && $this->to) return "git diff {$this->from}..{$this->to}";
+    if ($this->from) return "git show {$this->from}";
+    return "git diff HEAD";
   }
 
+  /**
+   * Returns true if this is the last intro line, true if the next line will also be an intro line.
+   */
   private function printIntroLine($line) {
-    /*
-    if (preg_match('!^git --diff (\S+) (\S+)!', $line, $matches)) {
-      $this->leftfile = 
-      $this->rightfile = $matches[2];
-      $line = htmlspecialchars($line);
-      if ($matches[1][0] == 'a') {
-        substr($matches[1], 2);
-        $line .= '<a name="' . $this->leftfile . '"></a>'
+    //$this->printFullLineHtml(json_encode($line));
+    if (preg_match('!^diff --git (\S+) (\S+)$!', $line, $matches)) {
+      // Add a <span> with an id, to use as anchor link target
+      list (, $file_a, $file_b) = $matches;
+      if (preg_match('!^a/(.*)$!', $file_a)) {
+        $filename = htmlspecialchars(substr($file_a, 2));
+        $file_a = 'a/<span id="' . $filename . '">' . $filename . '</span>';
       }
-      if ($matches[2][0] == 'b' && ) {
-      $this->printFullLineHtml($line);
+      elseif (preg_match('!^b/(.*)$!', $file_b)) {
+        $filename = htmlspecialchars(substr($file_b, 2));
+        $file_b = 'b/<span id="' . $filename . '">' . $filename . '</span>';
+      }
+      $this->printFullLineHtml("git --diff $file_a $file_b");
     }
-    else*/if (preg_match('!--- a/(.*)!', $line, $matches)) {
+    elseif (preg_match('!--- a/(.*)!', $line, $matches)) {
       $this->leftfile = $matches[1];
     }
     elseif ('--- /dev/null' == $line) {
@@ -476,11 +461,29 @@ class GitDiffRenderer {
 
   public function renderDiff() {
     $command = $this->getDiffCommand();
+
     // use the diff --stat as a TOC
-    $stat = htmlspecialchars(`$command --stat`);
-    echo "<pre>$stat</pre>\n";
+    $stat = htmlspecialchars(`$command --stat=300,100`);
+
     // the diff itself
+    // (for 'git show' use a format to show the diff only)
+    if (preg_match('/^git show/', $command)) $command .= ' --pretty=format:%b';
     $diff = `$command`;
+
+    // If it is a merge, the diff is empty.
+    if (preg_match('!^\s*$!', $diff)) {
+      // Print stat header and return
+      echo "<pre>$stat</pre>\n";
+      return;
+    }
+
+    // Add anchor links down to the diff
+    $stat = preg_replace('!^( )(\S+)(\s+\|\s+\d+ \+*\-*)$!m', '$1<a href="#$2">$2</a>$3', $stat);
+
+    // Print stat header
+    echo "<pre>$stat</pre>\n";
+
+    // Start processing the diff
     $lines = preg_split('/[\r\n]+/', $diff);
     if ($lines[count($lines) - 1] == '') array_pop($lines);
     $intro = true;
@@ -499,7 +502,6 @@ class GitDiffRenderer {
         case '\\': {
           // "\ No newline at end of file"
           // Count as a delete
-          //$this->printLine('del', '\\' . $codeline, null);
           $this->deleted_buffer[count($this->deleted_buffer) - 1] .= "\n\\" . $codeline;
           break;
         }
