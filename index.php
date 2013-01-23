@@ -37,13 +37,13 @@ while(true) {
 chdir($path);
 
 $repo = basename($path);
-$do = empty($_GET['do']) ? 'status' : $_GET['do'];
+$git = empty($_GET['git']) ? 'status' : $_GET['git'];
 
 ?>
 <!DOCTYPE html>
 <html>
   <head>
-    <title>git <?= $do . ' @ ' . htmlspecialchars($repo) ?> - minigitweb</title>
+    <title>git <?= $git . ' @ ' . htmlspecialchars($repo) ?> - minigitweb</title>
     <style>
       /* general stuff */
       input.check   { vertical-align: bottom; margin:0 3px }
@@ -102,17 +102,17 @@ $do = empty($_GET['do']) ? 'status' : $_GET['do'];
     <div class="header">
       <h1><?= htmlspecialchars($repo) ?></h1>
       <ul class="menu">
-        <li><a href="?do=status">status</a></li>
-        <li><a href="?do=log">log</a></li>
-        <li><a href="?do=diff">diff</a></li>
-        <li><a href="?do=branch">branch</a></li>
-        <li><a href="?do=tag">tag</a></li>
-        <li><a href="?do=stash">stash</a></li>
-        <li><a href="?do=help">help</a></li>
+        <li><a href="?git=status">status</a></li>
+        <li><a href="?git=log">log</a></li>
+        <li><a href="?git=diff">diff</a></li>
+        <li><a href="?git=branch">branch</a></li>
+        <li><a href="?git=tag">tag</a></li>
+        <li><a href="?git=stash">stash</a></li>
+        <li><a href="?git=help">help</a></li>
       </ul>
     </div>
     <?
-    switch ($do) {
+    switch ($git) {
       case 'log': {
         $cmd = "git log";
         $pagination = false;
@@ -136,17 +136,26 @@ $do = empty($_GET['do']) ? 'status' : $_GET['do'];
 
         echo '<form action="">';
         echo '<div class="actions">';
-        echo '<input type="submit" name="do" value="diff" /> ';
+        echo '<input type="submit" name="git" value="diff" /> ';
         if ($pagination) {
-          echo '<a href="?do=log&amp;n=10">1&hellip;10</a> ';
-          echo '<a href="?do=log&amp;n=90&amp;skip=10">11̣&hellip;100</a> ';
-          echo '<a href="?do=log&amp;n=0&amp;skip=100">101&hellip;&infin;</a> ';
+          echo '<a href="?git=log&amp;n=10">1&hellip;10</a> ';
+          echo '<a href="?git=log&amp;n=10&amp;skip=10">11&hellip;20</a> ';
+          echo '<a href="?git=log&amp;n=10&amp;skip=20">21&hellip;30</a> ';
+          echo '<a href="?git=log&amp;n=10&amp;skip=30">31&hellip;40</a> ';
+          echo '<a href="?git=log&amp;n=10&amp;skip=40">41&hellip;50</a> ';
+          echo '<a href="?git=log&amp;n=10&amp;skip=50">51&hellip;60</a> ';
+          echo '<a href="?git=log&amp;n=10&amp;skip=60">61&hellip;70</a> ';
+          echo '<a href="?git=log&amp;n=10&amp;skip=70">71&hellip;80</a> ';
+          echo '<a href="?git=log&amp;n=10&amp;skip=80">81&hellip;90</a> ';
+          echo '<a href="?git=log&amp;n=10&amp;skip=90">91&hellip;100</a> ';
+          echo '<a href="?git=log&amp;n=0&amp;skip=100">101&hellip;&infin;</a> ';
+          echo '<a href="?git=log&amp;n=0">1&hellip;&infin;</a> ';
         }
         echo '</div>';
         $log = `$cmd 2>&1`;
         $log = preg_replace(
           '/^commit (\S+)$/m',
-          "commit <a href=\"?do=show&amp;commit=$1\">$1</a>"
+          "commit <a href=\"?git=show&amp;commit=$1\">$1</a>"
           . ' <label><input type="checkbox" class="check" name="commit[]" value="$1" /></label>',
           htmlspecialchars($log)
         );
@@ -164,9 +173,9 @@ $do = empty($_GET['do']) ? 'status' : $_GET['do'];
         if (count($rows) > 0) {
           echo '<form action="">';
           echo '<div class="actions">';
-          echo '<input type="submit" name="do" value="diff" />';
-          echo '<input type="submit" name="do" value="log" />';
-          echo '<input type="submit" name="do" value="cherry" />';
+          echo '<input type="submit" name="git" value="diff" />';
+          echo '<input type="submit" name="git" value="log" />';
+          echo '<input type="submit" name="git" value="cherry" />';
           echo '</div>';
           echo '<table>';
           echo '<tr><th></th><th>from</th><th>to</th></tr>';
@@ -176,7 +185,7 @@ $do = empty($_GET['do']) ? 'status' : $_GET['do'];
               $name = $matches[3];
               $row = "{$matches[2]}{$matches[3]}";
               $current = ($matches[1] == '*');
-              $row = "<a href=\"?do=log&amp;commit=$name\">$row</a>";
+              $row = "<a href=\"?git=log&amp;commit=$name\">$row</a>";
               if ($current) $row = "<strong>$row</strong>";
               echo '<tr class="' . (++$i % 2 == 0 ? 'even' : 'odd') . '">';
               echo "<td>", ($current ? '*' : '&nbsp;'), "&nbsp;$row</td>";
@@ -218,7 +227,7 @@ $do = empty($_GET['do']) ? 'status' : $_GET['do'];
         $stash = htmlspecialchars(`$cmd 2>&1`);
         $stash = preg_replace(
           '/^[^:]+/m',
-          '<a href="?do=diff&amp;commit[]=$0">$0</a>',
+          '<a href="?git=diff&amp;commit[]=$0">$0</a>',
           $stash
         );
         echo "<pre>$stash</pre>";
@@ -243,7 +252,7 @@ $do = empty($_GET['do']) ? 'status' : $_GET['do'];
         $cherry = htmlspecialchars(`$cmd 2>&1`);
         $cherry = preg_replace(
           '/^(\+|-) (\S+)/m',
-          '$1 <a href="?do=show&amp;commit=$2">$2</a>',
+          '$1 <a href="?git=show&amp;commit=$2">$2</a>',
           $cherry
         );
         echo "<pre>$cherry</pre>";
@@ -310,7 +319,7 @@ $do = empty($_GET['do']) ? 'status' : $_GET['do'];
           $help = htmlspecialchars(`$command 2>&1`);
           $help = preg_replace(
             '/git-([\w-]+)\(1\)/',
-            '<a href="?do=help&amp;help=$1">git-$1(1)</a>',
+            '<a href="?git=help&amp;help=$1">git-$1(1)</a>',
             $help);
           echo "<pre>$help</pre>";
           echo '</div>';
@@ -322,7 +331,7 @@ $do = empty($_GET['do']) ? 'status' : $_GET['do'];
           $help = htmlspecialchars(`$command 2>&1`);
           $help = preg_replace(
             '/^   ([a-z]+)   /m',
-            '   <a href="?do=help&amp;help=$1">$1</a>   ',
+            '   <a href="?git=help&amp;help=$1">$1</a>   ',
             $help);
           echo "<pre>$help</pre>";
           echo '</div>';
