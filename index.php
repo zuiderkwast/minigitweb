@@ -115,7 +115,6 @@ $git = empty($_GET['git']) ? 'status' : $_GET['git'];
     switch ($git) {
       case 'log': {
         $cmd = "git log";
-        $pagination = false;
         if (isset($_GET['from'], $_GET['to'])) {
           $cmd .= " {$_GET['from']}..{$_GET['to']}";
         }
@@ -123,14 +122,14 @@ $git = empty($_GET['git']) ? 'status' : $_GET['git'];
           $commit = $_GET['commit'];
           $cmd .= " $commit"; // --max-count=100
         }
-        else {
-          $pagination = true;
-          if (isset($_GET['n'])) {
-            if ($_GET['n'] > 0) $cmd .= " --max-count=" . intval($_GET['n']);
-          }
-          else $cmd .= " --max-count=10";
-          if (isset($_GET['skip'])) $cmd .= " --skip=" . intval($_GET['skip']);
+        // Pagination
+        $pagination = true;
+        if (isset($_GET['n'])) {
+          if ($_GET['n'] > 0) $cmd .= " --max-count=" . intval($_GET['n']);
         }
+        else $cmd .= " --max-count=10";
+        if (isset($_GET['skip'])) $cmd .= " --skip=" . intval($_GET['skip']);
+        // Header
         echo "<h2>$cmd</h2>";
         echo '<div class="content">';
 
@@ -425,8 +424,8 @@ class GitDiffRenderer {
   }
 
   public function getDiffCommand() {
-    if ($this->from && $this->to) return "git diff {$this->from}..{$this->to}";
-    if ($this->from) return "git show {$this->from}";
+    if ($this->from && $this->to) return "git diff -M {$this->from}..{$this->to}";
+    if ($this->from) return "git diff -M {$this->from}^..{$this->from}";
     return "git diff HEAD";
   }
 
