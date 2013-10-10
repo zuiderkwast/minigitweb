@@ -407,6 +407,7 @@ class GitDiffRenderer {
   private function textToHtml($text) {
     $html = htmlspecialchars($text);
     $html = preg_replace('/^( +)/e', 'str_repeat("&nbsp;", strlen("$1"))', $html);
+    $html = preg_replace('/^(\t+)/e', 'str_repeat("&nbsp;", 8 * strlen("$1"))', $html);
     $html = preg_replace('/(  +)/e', '" " . str_repeat("&nbsp;", strlen("$1") - 1)', $html);
     $html = nl2br($html);
     return $html;
@@ -471,7 +472,7 @@ class GitDiffRenderer {
     $command = $this->getDiffCommand();
 
     // use the diff --stat as a TOC
-    $stat = htmlspecialchars(`$command --stat=300,100`);
+    $stat = htmlspecialchars(`$command --stat=160,100`);
 
     // the diff itself
     // (for 'git show' use a format to show the diff only)
@@ -510,7 +511,8 @@ class GitDiffRenderer {
         case '\\': {
           // "\ No newline at end of file"
           // Count as a delete
-          $this->deleted_buffer[count($this->deleted_buffer) - 1] .= "\n\\" . $codeline;
+          if (count($this->deleted_buffer) == 0) $this->deleted_buffer = array('\\' . $codeline);
+          else $this->deleted_buffer[count($this->deleted_buffer) - 1] .= "\n\\" . $codeline;
           break;
         }
         case '-': {
