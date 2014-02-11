@@ -167,10 +167,10 @@ $git = empty($_GET['git']) ? 'status' : $_GET['git'];
         $cmd = "git branch";
         $all = isset($_GET['all']);
         if ($all) $cmd .= ' -a';
-        $show = isset($_GET['show']) ? $_GET['show'] : 'all';
-        switch ($show) {
-          case 'merged':   $cmd .= ' --merged master'; break;
-          case 'no-merged': $cmd .= ' --no-merged master'; break;
+        $merged = isset($_GET['merged']) ? $_GET['merged'] : 'both';
+        switch ($merged) {
+          case 'yes': $cmd .= ' --merged master'; break;
+          case 'no':  $cmd .= ' --no-merged master'; break;
         }
         echo "<h2>$cmd</h2>";
         echo '<div class="content">';
@@ -180,10 +180,10 @@ $git = empty($_GET['git']) ? 'status' : $_GET['git'];
           echo '<form action="">';
           echo '<div class="actions">';
           echo 'Show branches:';
-          echo '<select name="show">';
-          echo '<option value="all">merged and unmerged</option>';
-          echo '<option value="no-merged"', ($show == 'no-merged' ? ' selected' : ''),'>unmerged only</option>';
-          echo '<option value="merged"', ($show == 'merged' ? ' selected' : ''),'>merged only</option>';
+          echo '<select name="merged">';
+          echo '<option value="both">merged and unmerged</option>';
+          echo '<option value="no"', ($merged == 'no' ? ' selected' : ''),'>unmerged only</option>';
+          echo '<option value="yes"', ($merged == 'yes' ? ' selected' : ''),'>merged only</option>';
           echo '</select>';
           echo '<label><input type="checkbox" name="all"', ($all ? ' checked' : ''), '>include remote</label>';
           echo '<input type="submit" name="git" value="branch" />';
