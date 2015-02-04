@@ -458,7 +458,7 @@ class GitDiffRenderer {
 
   public function getDiffCommand() {
     if ($this->from && $this->to) return "git diff -M {$this->from}..{$this->to}";
-    if ($this->from) return "git diff-tree -p -M {$this->from}"; #"git diff -M {$this->from}^..{$this->from}";
+    if ($this->from) return "git diff-tree -p --no-commit-id -M {$this->from}";
     return "git diff HEAD";
   }
 
