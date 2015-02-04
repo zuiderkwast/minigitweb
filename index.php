@@ -425,9 +425,38 @@ class GitDiffRenderer {
 
   private function textToHtml($text) {
     $html = htmlspecialchars($text);
-    $html = preg_replace('/^( +)/e', 'str_repeat("&nbsp;", strlen("$1"))', $html);
-    $html = preg_replace('/^(\t+)/e', 'str_repeat("&nbsp;", 8 * strlen("$1"))', $html);
-    $html = preg_replace('/(  +)/e', '" " . str_repeat("&nbsp;", strlen("$1") - 1)', $html);
+    /**
+     * From PHP 5.5, preg_replace with e modifier was deprecated, but in PHP 5.3 anonymous functions
+     * were introduced which provides a better interface for modifying the replacement string.
+     */
+    if (version_compare(phpversion(), '5.4', '>=')) {
+      $html = preg_replace_callback(
+        '/^( +)/',
+        function ($matches) {
+          return str_repeat('&nbsp;', strlen($matches[1]));
+        },
+        $html
+      );
+      $html = preg_replace_callback(
+        '/^(\t+)/',
+        function ($matches) {
+          return str_repeat('&nbsp;', 8 * strlen($matches[1]));
+        },
+        $html
+      );
+      $html = preg_replace_callback(
+        '/(  +)/',
+        function ($matches) {
+          return str_repeat('&nbsp;', strlen($matches[1]) - 1);
+        },
+        $html
+      );
+    }
+    else {
+        $html = preg_replace('/^( +)/e', 'str_repeat("&nbsp;", strlen("$1"))', $html);
+        $html = preg_replace('/^(\t+)/e', 'str_repeat("&nbsp;", 8 * strlen("$1"))', $html);
+        $html = preg_replace('/(  +)/e', '" " . str_repeat("&nbsp;", strlen("$1") - 1)', $html);
+    }
     $html = nl2br($html);
     return $html;
   }
