@@ -425,38 +425,9 @@ class GitDiffRenderer {
 
   private function textToHtml($text) {
     $html = htmlspecialchars($text);
-    /**
-     * From PHP 5.5, preg_replace with e modifier was deprecated, but in PHP 5.3 anonymous functions
-     * were introduced which provides a better interface for modifying the replacement string.
-     */
-    if (version_compare(phpversion(), '5.4', '>=')) {
-      $html = preg_replace_callback(
-        '/^( +)/',
-        function ($matches) {
-          return str_repeat('&nbsp;', strlen($matches[1]));
-        },
-        $html
-      );
-      $html = preg_replace_callback(
-        '/^(\t+)/',
-        function ($matches) {
-          return str_repeat('&nbsp;', 8 * strlen($matches[1]));
-        },
-        $html
-      );
-      $html = preg_replace_callback(
-        '/(  +)/',
-        function ($matches) {
-          return str_repeat('&nbsp;', strlen($matches[1]) - 1);
-        },
-        $html
-      );
-    }
-    else {
-        $html = preg_replace('/^( +)/e', 'str_repeat("&nbsp;", strlen("$1"))', $html);
-        $html = preg_replace('/^(\t+)/e', 'str_repeat("&nbsp;", 8 * strlen("$1"))', $html);
-        $html = preg_replace('/(  +)/e', '" " . str_repeat("&nbsp;", strlen("$1") - 1)', $html);
-    }
+    $html = preg_replace_callback('/^( +)/', 'leading_spaces_to_nbsps', $html);
+    $html = preg_replace_callback('/^(\t+)/', 'leading_tabs_to_nbsps', $html);
+    $html = preg_replace_callback('/(  +)/', 'multiple_spaces_to_nbsp', $html);
     $html = nl2br($html);
     return $html;
   }
@@ -663,3 +634,13 @@ class GitDiffRenderer {
   }
 }
 
+// Callbacks for preg_replace_callback. Named old functions work for PHP < 5.3.
+function leading_spaces_to_nbsps($matches) {
+  return str_repeat("&nbsp;", strlen($matches[0]));
+}
+function leading_tabs_to_nbsps($matches) {
+  return str_repeat("&nbsp;", 8 * strlen($matches[0]));
+}
+function multiple_spaces_to_nbsp($matches) {
+  return " " . str_repeat("&nbsp;", strlen($matches[0]) - 1);
+}
