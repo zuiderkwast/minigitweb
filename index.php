@@ -311,7 +311,7 @@ $git = empty($_GET['git']) ? 'status' : $_GET['git'];
 
         $renderer = new GitDiffRenderer();
         $renderer->setCommitRange($from, $to);
-        echo '<h2>', $renderer->getDiffCommand(), '</h2>';
+        echo '<h2>', htmlspecialchars($renderer->getTitleCommand()), '</h2>';
         echo '<div class="content">';
         if (isset($_GET['blame'])) {
           echo '<p>Hover on line numbers for blame tooltip.</p>';
@@ -443,9 +443,22 @@ class GitDiffRenderer {
     $this->printFullLineHtml(htmlspecialchars($text));
   }
 
+  /** A git command that gives a similar result and looks good as a heading */
+  public function getTitleCommand() {
+    if ($this->from && $this->to) return "git diff {$this->from}..{$this->to}";
+    if ($this->from) return "git show {$this->from}";
+    return "git diff HEAD";
+  }
+
+  public function getStatCommand() {
+    if ($this->from && $this->to) return "git diff --stat -M {$this->from}..{$this->to}";
+    if ($this->from) return "git show --stat -M {$this->from}";
+    return "git diff --stat HEAD";
+  }
+
   public function getDiffCommand() {
     if ($this->from && $this->to) return "git diff -M {$this->from}..{$this->to}";
-    if ($this->from) return "git diff -M {$this->from}^..{$this->from}";
+    if ($this->from) return "git diff-tree -p -M {$this->from}"; #"git diff -M {$this->from}^..{$this->from}";
     return "git diff HEAD";
   }
 
@@ -488,14 +501,15 @@ class GitDiffRenderer {
   }
 
   public function renderDiff() {
-    $command = $this->getDiffCommand();
 
     // use the diff --stat as a TOC
-    $stat = htmlspecialchars(`$command --stat=160,100`);
+    $stat_command = $this->getStatCommand();
+    $stat = htmlspecialchars(`$stat_command --stat=160,100`);
 
     // the diff itself
     // (for 'git show' use a format to show the diff only)
-    if (preg_match('/^git show/', $command)) $command .= ' --pretty=format:%b';
+    $command = $this->getDiffCommand();
+    //if (preg_match('/^git show/', $command)) $command .= ' --pretty=format:%b';
     $diff = `$command`;
 
     // If it is a merge, the diff is empty.
